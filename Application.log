@@ -1,0 +1,56 @@
+2025-06-04 17:11:45 - INFO - Starting Application Scraper for Maersk...
+
+2025-06-04 17:11:45 - INFO - Reading input file data...
+
+2025-06-04 17:11:45 - INFO - Extracted 15 booking numbers...
+
+2025-06-04 17:12:12 - INFO - patching driver executable C:\Users\Asus Admin\appdata\roaming\undetected_chromedriver\undetected_chromedriver.exe
+
+2025-06-04 17:12:21 - INFO - Tracking shipment: 246118391
+
+2025-06-04 17:12:21 - INFO - Successfully typed booking number in search bar...
+
+2025-06-04 17:12:24 - INFO - Reading 3 container elements...
+
+2025-06-04 17:14:25 - INFO - Starting Application Scraper for Maersk...
+
+2025-06-04 17:14:25 - INFO - Reading input file data...
+
+2025-06-04 17:14:25 - INFO - Extracted 15 booking numbers...
+
+2025-06-04 17:14:51 - INFO - patching driver executable C:\Users\Asus Admin\appdata\roaming\undetected_chromedriver\undetected_chromedriver.exe
+
+2025-06-04 17:14:57 - INFO - Tracking shipment: 246118391
+
+2025-06-04 17:14:58 - INFO - Successfully typed booking number in search bar...
+
+2025-06-04 17:15:00 - INFO - Reading 3 container elements...
+
+2025-06-04 17:15:07 - INFO - MaerskContainerScraper - Getting container ID
+
+2025-06-04 17:15:07 - INFO - MaerskContainerScraper - Getting container status
+
+2025-06-04 17:15:10 - INFO - MaerskContainerScraper - Getting milestone elements
+
+2025-06-04 17:15:14 - INFO - MaerskContainerScraper - Getting container ID
+
+2025-06-04 17:15:14 - INFO - MaerskContainerScraper - Getting container status
+
+2025-06-04 17:15:19 - INFO - MaerskContainerScraper - Getting milestone elements
+
+2025-06-04 17:15:19 - INFO - Successfully expanded container button...
+
+2025-06-04 17:15:24 - INFO - MaerskContainerScraper - Getting container ID
+
+2025-06-04 17:15:24 - INFO - MaerskContainerScraper - Getting container status
+
+2025-06-04 17:15:29 - INFO - MaerskContainerScraper - Getting milestone elements
+
+2025-06-04 17:15:30 - INFO - Successfully expanded container button...
+
+2025-06-04 17:15:35 - INFO - Tracking shipment: 246118452
+
+2025-06-04 17:15:36 - INFO - Successfully typed booking number in search bar...
+
+2025-06-04 17:15:37 - INFO - Reading 3 container elements...
+
