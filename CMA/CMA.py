@@ -12,8 +12,8 @@ from selenium.webdriver.common.by import By
 from Date.ScrapeTime import ScrapeTime
 import pandas as pd
 
-INPUT_FILE_PATH = r""
-OUTPUT_FILE_PATH = r""
+INPUT_FILE_PATH = r"input_here"
+OUTPUT_FILE_PATH = r"CMA_OUTPUT.csv"
 if INPUT_FILE_PATH.endswith(".csv"):
     df = pd.read_csv(INPUT_FILE_PATH)
 elif INPUT_FILE_PATH.endswith(".xlsx"):

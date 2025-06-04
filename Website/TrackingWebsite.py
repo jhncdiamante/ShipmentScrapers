@@ -65,19 +65,15 @@ class TrackingWebsite(Subject, IWebsite):
         self._search_feature.search(shipment_id)
         shipment_scraper = self._shipment_scraper(self._driver)
         container_elements = shipment_scraper.get_container_elements()
-        print(f"Found {len(container_elements)} containers...")
         time.sleep(random.randint(3,5))
 
         for cont_element in container_elements:
             container_scraper = self._container_scraper(cont_element, self._driver)
             time.sleep(random.randint(3,5))
             container_id = container_scraper.get_id()
-            print(f"Container ID: {container_id}")
             container_status = container_scraper.get_status()
-            print(f"Status: {container_status}")
             time.sleep(random.randint(3,5))
             milestone_elements = container_scraper.get_milestone_elements()
-            print(f"Found {len(milestone_elements)} milestone/s...")
             
             milestones_data = {"Gate in": None,
                               "Departure": None,

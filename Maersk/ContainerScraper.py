@@ -40,29 +40,30 @@ class MaerskContainerScraper(IContainerScraper):
         return MaerskContainerExpandButton((By.CSS_SELECTOR, CONTAINER_TOGGLE_BUTTON_CSS_SELECTOR), self._container_element, self._page_handle)
         
     @retryable(max_retries=5, delay=2, exceptions=(TimeoutException,))
-    def _get_id(self) -> str:
+    def get_id(self) -> str:
         container_id_element = WebDriverWait(self._container_element, 60).until(
             EC.visibility_of_element_located((By.TAG_NAME, "span"))
         )
         container_id = container_id_element.text.strip()
+        logging.info(f"Successfully extracted container ID: {container_id}")
         return container_id
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException,))
-    def _get_status(self) -> str:
+    def get_status(self) -> str:
         element = WebDriverWait(self._container_element, TIMEOUT).until(
             EC.presence_of_element_located((By.CSS_SELECTOR,
                 CONTAINER_STATUS_CSS_SELECTOR
             ))
         )
+        logging.info("Determining container status...")
         return COMPLETED_CONTAINER if EVENT_DETERMINER_FOR_STATUS in element.text.strip().lower() else IN_PROGRESS_CONTAINER
 
     @retryable(max_retries=5, delay=2, exceptions=(TimeoutException,))
-    def _get_milestone_elements(self) -> dict:
+    def get_milestone_elements(self) -> dict:
         try:
             # try clicking expand button if present and not yet expanded
             if not self._expand_button.get_state():
                 self._expand_button.click(head=True)
-                logging.info(f"Successfully expanded container button...")
             # get the milestone panel ref located in expand button attributes
             milestone_panel_id = self._expand_button.get_panel_reference()
         except TimeoutException:
@@ -81,7 +82,7 @@ class MaerskContainerScraper(IContainerScraper):
     
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException))
-    def _get_estimated_time_arrival(self) -> str:
+    def get_estimated_time_arrival(self) -> str:
         host = WebDriverWait(self._container_element, TIMEOUT).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, ETA_HOST_ELEMENT_CSS_SELECTOR))
         )
