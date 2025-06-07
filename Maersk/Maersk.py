@@ -54,7 +54,7 @@ maersk = TrackingWebsite("https://www.maersk.com/tracking/", maersk_driver, sear
 csv_observer = CsvObserver(OUTPUT_FILE_PATH)
 maersk.attach(csv_observer)
 maersk.open()
-for i in first_col_list:
+for i in ["246118452"]:
     logging.info(f"Tracking shipment: {i}")
     maersk.track_shipment(i)
     time.sleep(random.randint(3,5))

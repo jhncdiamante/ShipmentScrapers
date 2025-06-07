@@ -11,8 +11,9 @@ from Database.CSVDatabase import CsvObserver
 from selenium.webdriver.common.by import By
 from Date.ScrapeTime import ScrapeTime
 import pandas as pd
+import time, random
 
-INPUT_FILE_PATH = r"input_here"
+INPUT_FILE_PATH = r"CMA_OUTPUT.csv"
 OUTPUT_FILE_PATH = r"CMA_OUTPUT.csv"
 if INPUT_FILE_PATH.endswith(".csv"):
     df = pd.read_csv(INPUT_FILE_PATH)
@@ -40,5 +41,6 @@ csv_observer = CsvObserver(OUTPUT_FILE_PATH)
 maersk.attach(csv_observer)
 maersk.open()
 
-for i in first_col_list:
+for i in ["SGN2621243"]:
     maersk.track_shipment(i)
+    time.sleep(3, 8)

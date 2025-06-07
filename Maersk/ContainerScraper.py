@@ -11,7 +11,7 @@ from Maersk.ContainerExpandButton import MaerskContainerExpandButton
 from Helpers.retryable import retryable
 
 from Helpers.logging_config import setup_logger
-
+import time, random
 logging = setup_logger()
 
 TIMEOUT = 60
@@ -64,6 +64,7 @@ class MaerskContainerScraper(IContainerScraper):
             # try clicking expand button if present and not yet expanded
             if not self._expand_button.get_state():
                 self._expand_button.click(head=True)
+                #time.sleep(random.randint(3, 5))
             # get the milestone panel ref located in expand button attributes
             milestone_panel_id = self._expand_button.get_panel_reference()
         except TimeoutException:

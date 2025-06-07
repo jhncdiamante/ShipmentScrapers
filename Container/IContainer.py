@@ -13,3 +13,4 @@ class IContainerScraper(ABC):
 
     @abstractmethod
     def get_estimated_time_arrival(self): pass
+

@@ -18,7 +18,7 @@ from Subject.Subject import Subject
 from Date.IDate import IDate
 import time, random
 
-STANDARD_EVENTS = ["Gate in", "Departure", "Arrival", "Discharge", "Gate out"]
+STANDARD_EVENTS = {"Gate in", "Departure", "Arrival", "Discharge", "Gate out"}
 OPTIONAL_EVENTS = ["Arrival", "Discharge", "Gate out"]
 
 
@@ -88,8 +88,9 @@ class TrackingWebsite(Subject, IWebsite):
             
             for m_element in milestone_elements:
                 milestone_scraper = self._milestone_scraper(m_element)
+                #self._driver.execute_script("arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center' });", m_element)
                 m_event = milestone_scraper.get_event()
-                if (m_event not in STANDARD_EVENTS) or (container_status == "On-going" and m_event in OPTIONAL_EVENTS):
+                if (m_event not in STANDARD_EVENTS):
                     continue
                 m_date = milestone_scraper.get_date()
                 m_vessel = milestone_scraper.get_vessel()
@@ -100,7 +101,10 @@ class TrackingWebsite(Subject, IWebsite):
                         milestones_data[f"{m_event} Vessel Name"] = m_vessel[1]
                         milestones_data[f"{m_event} Voyage ID"] = m_vessel[0]
 
-            estimated_time_arrival = container_scraper.get_estimated_time_arrival() if container_status == 'On-going' else milestones_data['Arrival']
+            estimated_time_arrival = milestones_data.get('Arrival', 'Unavailable')
+            if container_status == 'On-going':
+                for event_data in ["Arrival", "Arrival Vessel Name", "Arrival Voyage ID", "Discharge", "Gate out"]:
+                    milestones_data[event_data] = None
 
             current_time = self._scrape_time.get_current_time()
 
