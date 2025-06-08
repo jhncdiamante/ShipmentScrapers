@@ -1,14 +1,14 @@
 import time
-
-
-def retry_until_success(func, max_retries, delay=2, exceptions=(Exception,)):
-    
-    for _ in range(max_retries):
+def retry_until_success(func, max_retries, delay=2, exceptions=(Exception,), name=None):
+    func_name = name or getattr(func, '__name__', 'anonymous_function')
+    for attempt in range(1, max_retries + 1):
         try:
             return func()
-        except exceptions:
+        except exceptions as e:
+            print(f"Attempt {attempt} failed for {func_name}: {e}")
             time.sleep(delay)
-    raise Exception("Failed to process function after multiple attempts.")
+    raise Exception(f"Failed to process {func_name} after {max_retries} attempts.")
+
 
 def retryable(max_retries=3, delay=2, exceptions=(Exception,)):
     def decorator(func):
@@ -17,7 +17,8 @@ def retryable(max_retries=3, delay=2, exceptions=(Exception,)):
                 func=lambda: func(*args, **kwargs),
                 max_retries=max_retries,
                 delay=delay,
-                exceptions=exceptions
+                exceptions=exceptions,
+                name=func.__name__  
             )
         return wrapper
     return decorator

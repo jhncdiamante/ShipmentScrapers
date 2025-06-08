@@ -17,7 +17,9 @@ from Shipment.IShipment import IShipmentScraper
 from Subject.Subject import Subject
 from Date.IDate import IDate
 import time, random
+from Helpers.logging_config import setup_logger
 
+logger = setup_logger()
 STANDARD_EVENTS = {"Gate in", "Departure", "Arrival", "Discharge", "Gate out"}
 OPTIONAL_EVENTS = ["Arrival", "Discharge", "Gate out"]
 
@@ -62,17 +64,24 @@ class TrackingWebsite(Subject, IWebsite):
         self._driver.close()
 
     def track_shipment(self, shipment_id):
+        logger.info(f"Searching {shipment_id}...")
         self._search_feature.search(shipment_id)
+        logger.info(f"Successfully searched {shipment_id}.")
+        logger.info("Initializing shipment scraper...")
         shipment_scraper = self._shipment_scraper(self._driver)
+        logger.info("Extracting container elements...")
         container_elements = shipment_scraper.get_container_elements()
-        time.sleep(random.randint(3,5))
+        logger.info(f"Successfully read {len(container_elements)} containers.")
 
-        for cont_element in container_elements:
+        for idx, cont_element in enumerate(container_elements):
             container_scraper = self._container_scraper(cont_element, self._driver)
-            time.sleep(random.randint(3,5))
+        
+            logger.info(f"Scraping container no.{idx + 1}")
+            logger.info("Getting ID...")
             container_id = container_scraper.get_id()
+            logger.info("Getting Status...")
             container_status = container_scraper.get_status()
-            time.sleep(random.randint(3,5))
+            logger.info("Getting milestones...")
             milestone_elements = container_scraper.get_milestone_elements()
             
             milestones_data = {"Gate in": None,
@@ -107,7 +116,7 @@ class TrackingWebsite(Subject, IWebsite):
                     milestones_data[event_data] = None
 
             current_time = self._scrape_time.get_current_time()
-
+            
             self.current_data = {
                 "Scrape Time": current_time,
                 "Shipment ID": shipment_id,

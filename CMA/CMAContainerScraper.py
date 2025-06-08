@@ -11,8 +11,17 @@ from selenium.common.exceptions import ElementClickInterceptedException, Timeout
 import time
 import random
 from Container.IContainer import IContainerScraper
+
+
+from Helpers.logging_config import setup_logger
+
+log = setup_logger()
+
+
 # SuperClassContainer 
 DISPLAY_PREVIOUS_EVENTS_BUTTON = 'a[aria-label="Display Previous Moves"]'
+HIDE_PREVIOUS_EVENTS_BUTTON = 'a[aria-label="Display Previous Moves"]'.replace("Display", "Hide")
+
 REFERENCE_ROWS = '.ico.ico-truck, .ico.ico-vessel'
 GRANDPARENT_ELEMENT = '../..'
 
@@ -26,8 +35,8 @@ CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR = "section.result-card--actions"
 CONTAINER_WNS_ID_XPATH = "//li[starts-with(normalize-space(text()), 'Container')]"
 CWNS_STATUS_CSS_SELECTOR = "span.capsule.primary"
 CWS_STATUS_CSS_SELECTOR = "div.capsule.info-dark"
-
-TIMEOUT = 30
+MILESTONE_PANEL_CSS_SELECTOR = 'section.result-card--details'
+TIMEOUT = 60
 
 
 class CMAContainerScraper(IContainerScraper):
@@ -38,17 +47,31 @@ class CMAContainerScraper(IContainerScraper):
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, ElementClickInterceptedException, ElementNotInteractableException,))
     def display_previous_events(self) -> None:
-        display_previous_events_button = WebDriverWait(self._container_element, TIMEOUT).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, DISPLAY_PREVIOUS_EVENTS_BUTTON))
-        )
-        display_previous_events_button.click()
-        time.sleep(random.randint(5, 10)) # wait for DOM changes
+        try:
+            
+            log.info("Attempting to click <display_prev_events> button...")
+            display_previous_events_button = WebDriverWait(self._container_element, TIMEOUT).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, DISPLAY_PREVIOUS_EVENTS_BUTTON))
+            )
+            display_previous_events_button.click()
+            
+            log.info("<display_prev_events> button clicked.")
+        except TimeoutException:
+            try:
+                WebDriverWait(self._container_element, TIMEOUT).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, HIDE_PREVIOUS_EVENTS_BUTTON))
+                )
+                log.info("<display_previous_events> button is already cliked.")
+            except TimeoutException:
+                log.error("Could not locate display_previous_events_button nor hide_previous_events button.")
+                raise TimeoutException
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException,))
     def get_milestone_elements(self):
         # milestone elements have a complex hierarchy but
         # event element has a sibling with span children containing truck or vessel icon
         # so we can use the truck or vessel icon to identify the event parent element(milestone row element)
+       
         ref_rows = WebDriverWait(self._container_element, TIMEOUT).until(EC.visibility_of_all_elements_located((By.CSS_SELECTOR, REFERENCE_ROWS)))
         
         milestone_rows = [row.find_element(By.XPATH, GRANDPARENT_ELEMENT) for row in ref_rows]
@@ -85,11 +108,16 @@ class CMAContainerWithSiblingsScraper(CMAContainerScraper):
        
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException))
     def display_details(self) -> None:
-       
+        log.info("Attempting to click <display_details_button>...")
+
         button = WebDriverWait(self._container_element, TIMEOUT).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR))
         )
         button.find_element(By.CSS_SELECTOR, "label").click()
+        log.info("<display_details_button> clicked.")
+        WebDriverWait(self._container_element, TIMEOUT).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, MILESTONE_PANEL_CSS_SELECTOR))
+        )
     
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException))
     def get_id(self) -> str:
@@ -99,6 +127,7 @@ class CMAContainerWithSiblingsScraper(CMAContainerScraper):
         
         return container_id
 
+    @retryable(max_retries=5, delay=2, exceptions=(Exception,))
     def get_milestone_elements(self):
         self.display_details()
         self.display_previous_events()
@@ -127,6 +156,7 @@ class CMAContainerWithNoSiblingsScraper(CMAContainerScraper):
 
     def get_milestone_elements(self):
         self.display_previous_events()
+        time.sleep(random.randint(3, 5))
         return super().get_milestone_elements()
         
       

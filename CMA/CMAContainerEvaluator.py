@@ -1,4 +1,3 @@
-from selenium.webdriver.common.by import By
 from CMA.CMAContainerScraper import CMAContainerWithSiblingsScraper, CMAContainerWithNoSiblingsScraper
 
 
