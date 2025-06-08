@@ -17,9 +17,9 @@ class OneShipmentScraper(IShipmentScraper):
     def __init__(self , page: WebDriver):
         self._page = page # driver
 
-    @retryable(max_retries=3, delay=3, exceptions=(NoSuchElementException,))
+    @retryable(max_retries=5, delay=5, exceptions=(NoSuchElementException, ValueError))
     def get_total_number_of_container_results(self) -> int:
-        time.sleep(3)
+        time.sleep(5)
         containers_count = self._page.find_element(By.ID, NUMBER_OF_CONTAINER_RESULTS_ID).text.strip()
         print(f"Container Count: {containers_count}")
         return int(containers_count)

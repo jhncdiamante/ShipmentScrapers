@@ -43,5 +43,3 @@ one.attach(csv_observer)
 for i in first_col_list:
     one.open()
     one.track_shipment(i)
-    import time
-    time.sleep(3)

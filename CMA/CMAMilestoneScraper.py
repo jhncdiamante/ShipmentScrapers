@@ -61,7 +61,7 @@ class CMAMilestoneScraper(IMilestoneScraper):
             'LOADED ON BOARD': 'Gate in' # for vietnam milestones
         }
 
-        return events.get(event.upper(), event)
+        return events.get(event.strip().upper(), event)
 
 
     

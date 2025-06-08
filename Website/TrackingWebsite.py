@@ -66,6 +66,7 @@ class TrackingWebsite(Subject, IWebsite):
     def track_shipment(self, shipment_id):
         logger.info(f"Searching {shipment_id}...")
         self._search_feature.search(shipment_id)
+        time.sleep(random.randint(4,8))
         logger.info(f"Successfully searched {shipment_id}.")
         logger.info("Initializing shipment scraper...")
         shipment_scraper = self._shipment_scraper(self._driver)
@@ -77,8 +78,9 @@ class TrackingWebsite(Subject, IWebsite):
             container_scraper = self._container_scraper(cont_element, self._driver)
         
             logger.info(f"Scraping container no.{idx + 1}")
-            logger.info("Getting ID...")
             container_id = container_scraper.get_id()
+            
+            logger.info(f"Detected Container ID: {container_id}")
             logger.info("Getting Status...")
             container_status = container_scraper.get_status()
             logger.info("Getting milestones...")

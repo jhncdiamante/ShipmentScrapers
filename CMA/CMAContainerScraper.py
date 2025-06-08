@@ -26,12 +26,13 @@ REFERENCE_ROWS = '.ico.ico-truck, .ico.ico-vessel'
 GRANDPARENT_ELEMENT = '../..'
 
 # Container with siblings
-ETA_ELEMENT = './/div[contains(text(), "ETA Berth at POD")]/..' 
+CWS_ETA_ELEMENT = './/div[contains(text(), "ETA Berth at POD")]/..' 
 CONTAINER_WS_ID_PANEL_CSS_SELECTOR = 'section.result-card--content'
 CONTAINER_WS_ID_ELEMENT_XPATH = './/dl[@class="container-ref"]/dt/span[1]'
 CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR = "section.result-card--actions"
 
 # Container with no siblings
+CWNS_ETA_ELEMENT = "div.timeline--item-eta"
 CONTAINER_WNS_ID_XPATH = "//li[starts-with(normalize-space(text()), 'Container')]"
 CWNS_STATUS_CSS_SELECTOR = "span.capsule.primary"
 CWS_STATUS_CSS_SELECTOR = "div.capsule.info-dark"
@@ -56,6 +57,7 @@ class CMAContainerScraper(IContainerScraper):
             display_previous_events_button.click()
             
             log.info("<display_prev_events> button clicked.")
+            time.sleep(random.randint(3,5))
         except TimeoutException:
             try:
                 WebDriverWait(self._container_element, TIMEOUT).until(
@@ -85,9 +87,9 @@ class CMAContainerScraper(IContainerScraper):
             EC.visibility_of_element_located((By.CSS_SELECTOR, last_event_css_selector))
         )
         last_event = last_event_element.text.strip().lower()
+        print(f"Latest event: {last_event}")
         
         return "Completed" if last_event in {'empty in depot', 'container to consignee'} else "On-going"
-
 
 
 class CMAContainerWithSiblingsScraper(CMAContainerScraper):
@@ -99,7 +101,7 @@ class CMAContainerWithSiblingsScraper(CMAContainerScraper):
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException))
     def get_estimated_time_arrival(self) -> str:
         eta_panel = WebDriverWait(self._container_element, TIMEOUT).until(
-            EC.visibility_of_element_located((By.XPATH, ETA_ELEMENT))
+            EC.visibility_of_element_located((By.XPATH, CWS_ETA_ELEMENT))
         )
         date_spans = eta_panel.find_elements(By.TAG_NAME, "span")
 
@@ -115,9 +117,8 @@ class CMAContainerWithSiblingsScraper(CMAContainerScraper):
         )
         button.find_element(By.CSS_SELECTOR, "label").click()
         log.info("<display_details_button> clicked.")
-        WebDriverWait(self._container_element, TIMEOUT).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, MILESTONE_PANEL_CSS_SELECTOR))
-        )
+   
+
     
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException))
     def get_id(self) -> str:
@@ -130,7 +131,9 @@ class CMAContainerWithSiblingsScraper(CMAContainerScraper):
     @retryable(max_retries=5, delay=2, exceptions=(Exception,))
     def get_milestone_elements(self):
         self.display_details()
+        time.sleep(random.randint(3,5))
         self.display_previous_events()
+        time.sleep(random.randint(3,5))
         return super().get_milestone_elements()
 
      
@@ -140,9 +143,14 @@ class CMAContainerWithNoSiblingsScraper(CMAContainerScraper):
     def get_status(self):
         return super().get_status(CWNS_STATUS_CSS_SELECTOR)
 
-    
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException))
     def get_estimated_time_arrival(self):
-        return "Data Unavailable"
+        eta_element = WebDriverWait(self._container_element, TIMEOUT).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, CWNS_ETA_ELEMENT))
+        )
+        date_element = eta_element.find_element(By.TAG_NAME, 'p')
+        eta_date = date_element.text.strip()
+        return eta_date
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException))
     def get_id(self) -> str:

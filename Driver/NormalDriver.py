@@ -30,3 +30,28 @@ class NormalDriver(IDriver):
     def set_up_driver(self):
         self.set_up_options()
         self._driver = uc.Chrome(options=self.chrome_options, use_subprocess=True)
+        
+        '''self._driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                // Remove webdriver flag
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+
+                // Fake the chrome object
+                window.chrome = {
+                    runtime: {}
+                };
+
+                // Fake languages
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['en-US', 'en']
+                });
+
+                // Fake plugins
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+            """
+        })'''
+
