@@ -86,7 +86,7 @@ class CMAContainerScraper(IContainerScraper):
         )
         last_event = last_event_element.text.strip().lower()
         
-        return "Completed" if last_event == 'empty in depot' else "On-going"
+        return "Completed" if last_event in {'empty in depot', 'container to consignee'} else "On-going"
 
 
 
