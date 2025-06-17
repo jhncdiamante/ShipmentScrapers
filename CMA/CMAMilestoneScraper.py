@@ -48,7 +48,7 @@ class CMAMilestoneScraper(IMilestoneScraper):
     def get_date(self) -> str:
         date_time_element = WebDriverWait(self._milestone_element, TIMEOUT).until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'td.date.k-table-td')))
 
-        return date_time_element.find_element(By.CSS_SELECTOR, DATE_CSS_SELECTOR).text + ' ' + date_time_element.find_element(By.CSS_SELECTOR, TIME_CSS_SELECTOR).text
+        return date_time_element.find_element(By.CSS_SELECTOR, DATE_CSS_SELECTOR).text.strip() + ' ' + date_time_element.find_element(By.CSS_SELECTOR, TIME_CSS_SELECTOR).text.strip()
 
 
     def normalize_event(self, event: str) -> str:

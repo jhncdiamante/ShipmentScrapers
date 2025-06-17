@@ -7,7 +7,7 @@ from selenium.common.exceptions import TimeoutException
 from Helpers.retryable import retryable
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.remote.webdriver import WebDriver
-TIMEOUT = 60
+TIMEOUT = 15
 
 
 CONTAINER_CLASS_NAME = "cardelem"

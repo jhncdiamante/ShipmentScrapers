@@ -20,7 +20,7 @@ logger = setup_logger()
 
 
 INPUT_FILE_PATH = r"D:\vscode\Maersk\OUTPUT.csv"
-OUTPUT_FILE_PATH = r"MAERSK_OUTPUT.csv"
+OUTPUT_FILE_PATH = r"MAERSK_TEST.csv"
 
 
 if INPUT_FILE_PATH.endswith(".csv"):
@@ -35,11 +35,11 @@ maersk_driver_handle.set_up_driver()
 maersk_driver = maersk_driver_handle.driver 
 
 search_bar = MaerskSearchBar(maersk_driver, (By.CSS_SELECTOR, "mc-input#track-input")) 
-search_button = Button((By.CLASS_NAME, "track__search__button"), maersk_driver)
+search_button = Button((By.CLASS_NAME, "track__search__button"), maersk_driver, maersk_driver)
 search_feature = SearchFeature(search_bar=search_bar, search_button=search_button)
 allow_button = Button((
                 By.CSS_SELECTOR, "button[data-test='coi-allow-all-button']"
-            ), maersk_driver)
+            ), maersk_driver, maersk_driver)
 cookie_handler = CookieHandler(maersk_driver, allow_cookies_button=allow_button)
 scrape_time = ScrapeTime()
 

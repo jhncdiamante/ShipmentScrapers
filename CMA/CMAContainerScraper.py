@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.common.action_chains import ActionChains
 
 from selenium.webdriver.remote.webdriver import WebDriver
 from Helpers.retryable import retryable
@@ -19,17 +20,25 @@ log = setup_logger()
 
 
 # SuperClassContainer 
-DISPLAY_PREVIOUS_EVENTS_BUTTON = 'a[aria-label="Display Previous Moves"]'
-HIDE_PREVIOUS_EVENTS_BUTTON = 'a[aria-label="Display Previous Moves"]'.replace("Display", "Hide")
+DISPLAY_PREVIOUS_EVENTS_BUTTON = 'a[aria-label="Display Previous Moves"]:not([tabindex="-1"])'
+HIDE_PREVIOUS_EVENTS_BUTTON = 'a[aria-label="Hide Previous Moves"]:not([tabindex="-1"])'
 
 REFERENCE_ROWS = '.ico.ico-truck, .ico.ico-vessel'
 GRANDPARENT_ELEMENT = '../..'
 
 # Container with siblings
+
+
+
+HIDDEN_RESULTS_CARD_PANEL = "section.result-card--details.is-hidden" # css selector
+VISIBLE_RESULTS_CARD_PANEL = "//section[@class='result-card--details']" # xpath
+
+
+
 CWS_ETA_ELEMENT = './/div[contains(text(), "ETA Berth at POD")]/..' 
 CONTAINER_WS_ID_PANEL_CSS_SELECTOR = 'section.result-card--content'
 CONTAINER_WS_ID_ELEMENT_XPATH = './/dl[@class="container-ref"]/dt/span[1]'
-CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR = "section.result-card--actions"
+CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR = "section.result-card--actions label"
 
 # Container with no siblings
 CWNS_ETA_ELEMENT = "div.timeline--item-eta"
@@ -37,7 +46,7 @@ CONTAINER_WNS_ID_XPATH = "//li[starts-with(normalize-space(text()), 'Container')
 CWNS_STATUS_CSS_SELECTOR = "span.capsule.primary"
 CWS_STATUS_CSS_SELECTOR = "div.capsule.info-dark"
 MILESTONE_PANEL_CSS_SELECTOR = 'section.result-card--details'
-TIMEOUT = 60
+TIMEOUT = 30
 
 
 class CMAContainerScraper(IContainerScraper):
@@ -45,28 +54,37 @@ class CMAContainerScraper(IContainerScraper):
         self._container_element = container_element
         self._driver = driver
 
+    def _goto_element(self, element):
+        # Scroll the button into view
+        self._driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, ElementClickInterceptedException, ElementNotInteractableException,))
     def display_previous_events(self) -> None:
+        
+        log.info("Attempting to click <display_prev_events> button...")
+        display_previous_events_button = WebDriverWait(self._container_element, TIMEOUT).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, DISPLAY_PREVIOUS_EVENTS_BUTTON))
+        )
+        self._goto_element(display_previous_events_button)
+        log.info("Scrolled in to button...")
+        time.sleep(2)
+
+        ActionChains(self._driver).move_to_element(display_previous_events_button).click().perform()
+        log.info("Button clicked with action chains. Trying to confirm...")
         try:
-            
-            log.info("Attempting to click <display_prev_events> button...")
-            display_previous_events_button = WebDriverWait(self._container_element, TIMEOUT).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, DISPLAY_PREVIOUS_EVENTS_BUTTON))
-            )
-            display_previous_events_button.click()
-            
-            log.info("<display_prev_events> button clicked.")
-            time.sleep(random.randint(3,5))
-        except TimeoutException:
-            try:
-                WebDriverWait(self._container_element, TIMEOUT).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, HIDE_PREVIOUS_EVENTS_BUTTON))
+            WebDriverWait(self._container_element, TIMEOUT).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, HIDE_PREVIOUS_EVENTS_BUTTON))
                 )
-                log.info("<display_previous_events> button is already cliked.")
-            except TimeoutException:
-                log.error("Could not locate display_previous_events_button nor hide_previous_events button.")
-                raise TimeoutException
+        except TimeoutException:
+            self._driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", display_previous_events_button)
+            self._driver.execute_script("arguments[0].click();", display_previous_events_button)
+            WebDriverWait(self._container_element, TIMEOUT).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, HIDE_PREVIOUS_EVENTS_BUTTON))
+                )
+        log.info("<display_prev_events> button clicked.")
+        
+    
+
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException,))
     def get_milestone_elements(self):
@@ -77,7 +95,7 @@ class CMAContainerScraper(IContainerScraper):
         ref_rows = WebDriverWait(self._container_element, TIMEOUT).until(EC.visibility_of_all_elements_located((By.CSS_SELECTOR, REFERENCE_ROWS)))
         
         milestone_rows = [row.find_element(By.XPATH, GRANDPARENT_ELEMENT) for row in ref_rows]
-        
+
         return milestone_rows
         
 
@@ -108,16 +126,27 @@ class CMAContainerWithSiblingsScraper(CMAContainerScraper):
         eta_info = " ".join([span.text.strip() for span in date_spans])
         return eta_info
        
-    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException, ElementNotInteractableException, ElementClickInterceptedException))
+    @retryable(max_retries=5, delay=2, exceptions=(TimeoutException, ElementNotInteractableException, ElementClickInterceptedException))
     def display_details(self) -> None:
-        log.info("Attempting to click <display_details_button>...")
-
+        
         button = WebDriverWait(self._container_element, TIMEOUT).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, CONTAINER_WS_DETAILS_BUTTON_CSS_SELECTOR))
         )
-        button.find_element(By.CSS_SELECTOR, "label").click()
+
+        ActionChains(self._driver).move_to_element(button).click().perform()
+
+        try:
+            WebDriverWait(self._container_element, TIMEOUT).until(
+                EC.visibility_of_element_located((By.XPATH, VISIBLE_RESULTS_CARD_PANEL))
+            )
+        except TimeoutException:
+            self._driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", button)
+            self._driver.execute_script("arguments[0].click();", button)
+            WebDriverWait(self._container_element, TIMEOUT).until(
+                EC.visibility_of_element_located((By.XPATH, VISIBLE_RESULTS_CARD_PANEL))
+            )       
+        
         log.info("<display_details_button> clicked.")
-   
 
     
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, NoSuchElementException))
@@ -131,9 +160,9 @@ class CMAContainerWithSiblingsScraper(CMAContainerScraper):
     @retryable(max_retries=5, delay=2, exceptions=(Exception,))
     def get_milestone_elements(self):
         self.display_details()
-        time.sleep(random.randint(3,5))
+        time.sleep(random.randint(3, 5))
         self.display_previous_events()
-        time.sleep(random.randint(3,5))
+        time.sleep(random.randint(3, 5))
         return super().get_milestone_elements()
 
      

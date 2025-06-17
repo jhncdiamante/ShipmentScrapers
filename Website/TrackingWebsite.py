@@ -73,7 +73,7 @@ class TrackingWebsite(Subject, IWebsite):
         logger.info("Extracting container elements...")
         container_elements = shipment_scraper.get_container_elements()
         logger.info(f"Successfully read {len(container_elements)} containers.")
-
+        container_elements.reverse()
         for idx, cont_element in enumerate(container_elements):
             container_scraper = self._container_scraper(cont_element, self._driver)
         
@@ -85,6 +85,7 @@ class TrackingWebsite(Subject, IWebsite):
             container_status = container_scraper.get_status()
             logger.info("Getting milestones...")
             milestone_elements = container_scraper.get_milestone_elements()
+            print(f"Found {len(milestone_elements)} milestone elements.")
             
             milestones_data = {"Gate in": None,
                               "Departure": None,
@@ -116,6 +117,10 @@ class TrackingWebsite(Subject, IWebsite):
             if container_status == 'On-going':
                 for event_data in ["Arrival", "Arrival Vessel Name", "Arrival Voyage ID", "Discharge", "Gate out"]:
                     milestones_data[event_data] = None
+            else:
+                for event, date in milestones_data.items():
+                    if not date:
+                        print(f"No data parsed in milestone: {event}")
 
             current_time = self._scrape_time.get_current_time()
             
