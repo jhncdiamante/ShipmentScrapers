@@ -13,13 +13,11 @@ class OneWebsite(TrackingWebsite):
 
     def open(self):
         super().open()
-        self.go_to_main_page()
+        self._go_to_main_page()
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException,))
-    def go_to_main_page(self):
+    def _go_to_main_page(self):
         iframe = WebDriverWait(self._driver, TIMEOUT).until(
-                EC.visibility_of_element_located((By.ID, IFRAME_ID))
-            )
+            EC.visibility_of_element_located((By.ID, IFRAME_ID))
+        )
         self._driver.switch_to.frame(iframe)
-
-    

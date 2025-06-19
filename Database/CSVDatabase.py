@@ -1,20 +1,28 @@
 import csv
 import os
+from prettytable import PrettyTable
+from Helpers.logging_config import setup_logger
 
-class CsvObserver:
+log = setup_logger()
+
+class CSVDatabase:
+    filename: str
+    header_written: bool
     def __init__(self, filename):
         self.filename = filename
         self.header_written = os.path.exists(filename) and os.path.getsize(filename) > 0
 
-    def update(self, data):
-        data = data
-        if not data:
-            print("No data to write.")
-            return
+    def update(self, data: dict) -> None:
+        table = PrettyTable()
+        table.field_names = [
+            "Header",
+            "Value",
+        ]  # First column: header/key, second: value
+        for key, value in data.items():
+            table.add_row([key, value])
+        log.info("Writing to CSV:\n%s", table)
 
-        print("Writing to CSV:", data)  # DEBUG
-
-        with open(self.filename, mode='a', newline='', encoding='utf-8') as file:
+        with open(self.filename, mode="a", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=data.keys())
 
             # Write header only once

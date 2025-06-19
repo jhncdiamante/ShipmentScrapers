@@ -7,14 +7,17 @@ from selenium.common.exceptions import TimeoutException
 from Helpers.retryable import retryable
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.remote.webdriver import WebDriver
+
 TIMEOUT = 15
 
 
 CONTAINER_CLASS_NAME = "cardelem"
 SINGLE_CONTAINER_ID = "trackingsearchsection"
 
+
 class CMAShipmentScraper(IShipmentScraper):
-    def __init__(self, page: WebDriver):
+    _page: WebDriver
+    def __init__(self, page):
         self._page = page
 
     @retryable(max_retries=5, delay=2, exceptions=(TimeoutException,))
@@ -23,12 +26,14 @@ class CMAShipmentScraper(IShipmentScraper):
         # to the ones with multiple containers
         try:
             containers = WebDriverWait(self._page, TIMEOUT).until(
-                EC.visibility_of_all_elements_located((By.CLASS_NAME, CONTAINER_CLASS_NAME))
+                EC.visibility_of_all_elements_located(
+                    (By.CLASS_NAME, CONTAINER_CLASS_NAME)
+                )
             )
             return containers
-            
+
         except TimeoutException:
-            
+
             single_container = WebDriverWait(self._page, TIMEOUT).until(
                 EC.visibility_of_element_located((By.ID, SINGLE_CONTAINER_ID))
             )
