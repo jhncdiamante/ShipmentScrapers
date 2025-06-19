@@ -126,7 +126,7 @@ class TrackingWebsite(Subject, IWebsite):
             else:
                 for event, date in milestones_data.items():
                     if not date:
-                        logger.ERROR(f"No data parsed in milestone: {event}")
+                        logger.error(f"No data parsed in milestone: {event}")
 
             current_time = self._scrape_time.get_current_time()
 

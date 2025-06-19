@@ -61,7 +61,7 @@ class CMAMilestoneScraper(IMilestoneScraper):
             EC.visibility_of_element_located((By.CSS_SELECTOR, "td.date.k-table-td"))
         )
 
-        return (
+        date = (
             date_time_element.find_element(
                 By.CSS_SELECTOR, DATE_CSS_SELECTOR
             ).text.strip()
@@ -70,6 +70,8 @@ class CMAMilestoneScraper(IMilestoneScraper):
                 By.CSS_SELECTOR, TIME_CSS_SELECTOR
             ).text.strip()
         )
+
+        return date.split(',', 1)[1].strip()
 
     def _normalize_event(self, event: str) -> str:
         events = {
