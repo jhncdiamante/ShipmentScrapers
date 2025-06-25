@@ -78,7 +78,7 @@ class CMAMilestoneScraper(IMilestoneScraper):
             "READY TO BE LOADED": "Gate in",
             "VESSEL DEPARTURE": "Departure",
             "VESSEL ARRIVAL": "Arrival",
-            "DISCHARGED IN TRANSHIPMENT": "Discharge",
+            "DISCHARGED": "Discharge",
             "CONTAINER TO CONSIGNEE": "Gate out",
             "LOADED ON BOARD": "Gate in",  # for vietnam milestones
         }
