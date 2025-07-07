@@ -72,6 +72,9 @@ class TrackingWebsite(Subject, IWebsite):
         logger.info("Extracting container elements...")
         container_elements = shipment_scraper.get_container_elements()
         logger.info(f"Reading {len(container_elements)} containers.")
+
+        containers_data = []
+
         for cont_element in container_elements:
             container_scraper = self._container_scraper(cont_element, self._driver)
             container_id = container_scraper.get_id()
@@ -129,11 +132,14 @@ class TrackingWebsite(Subject, IWebsite):
                         logger.error(f"No data parsed in milestone: {event}")
 
             current_time = self._scrape_time.get_current_time()
-
-            self.current_data = {
+            containers_data.append({
                 "Scrape Time": current_time,
                 "Shipment ID": shipment_id,
                 "Container ID": container_id,
                 "Status": container_status,
                 "ETA": estimated_time_arrival,
-            } | milestones_data
+            } | milestones_data)
+        
+        for container_data in containers_data:
+            self.current_data = container_data
+            

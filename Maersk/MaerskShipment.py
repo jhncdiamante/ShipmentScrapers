@@ -10,20 +10,24 @@ from Helpers.logging_config import setup_logger
 
 logging = setup_logger()
 
-CONTAINER_FRAME_CLASS_NAME = "track-grid__content"
 CONTAINER_CSS_SELECTOR = 'div[data-test="container"]'
+TIMEOUT = 15
 
 
 class MaerskShipmentScraper(IShipmentScraper):
     _page_handle: WebDriver
     def __init__(self, page_handle):
         self._page_handle = page_handle
-
+    
     @retryable(max_retries=5, delay=2, exceptions=(TimeoutException,))
     def get_container_elements(self) -> list[WebElement]:
-        c_elements = WebDriverWait(self._page_handle, 30).until(
-            EC.visibility_of_all_elements_located(
-                (By.CSS_SELECTOR, CONTAINER_CSS_SELECTOR)
+        try:
+            c_elements = WebDriverWait(self._page_handle, TIMEOUT).until(
+                EC.visibility_of_all_elements_located(
+                    (By.CSS_SELECTOR, CONTAINER_CSS_SELECTOR)
+                )
             )
-        )
-        return c_elements
+            return c_elements
+        except TimeoutException:
+            self._page_handle.refresh()
+            raise TimeoutException

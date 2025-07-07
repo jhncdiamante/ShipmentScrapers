@@ -1,4 +1,5 @@
 from Driver.MaskedUserAgentDriver import MaskedUserAgentDriver
+from Driver.NormalDriver import NormalDriver
 from Maersk.MaerskSearchBar import MaerskSearchBar
 from Button.Button import Button
 from Search.SearchFeature import SearchFeature
@@ -13,6 +14,10 @@ from Date.ScrapeTime import ScrapeTime
 from Helpers.logging_config import setup_logger
 import pandas as pd
 import time, random
+
+import os
+os.makedirs("Maersk/Errors", exist_ok=True)
+
 
 # Setup logger for this module
 logger = setup_logger()
@@ -30,7 +35,7 @@ elif INPUT_FILE_PATH.endswith(".xlsx"):
 
 # Convert the first column to a list of BL numbers
 BILL_OF_LADING_NUMBERS = df.iloc[:, 0].dropna().unique().tolist()
-maersk_driver_handle = MaskedUserAgentDriver()
+maersk_driver_handle = NormalDriver()
 maersk_driver_handle.set_up_driver()
 maersk_driver = maersk_driver_handle.driver
 maersk_driver.maximize_window()
@@ -62,7 +67,18 @@ maersk.attach(csv_observer)
 
 maersk.open()
 
-for bl in BILL_OF_LADING_NUMBERS:
-    maersk.track_shipment(bl)
-    time.sleep(random.randint(3, 5))
-print("Successfully tracked all shipments.")
+to_track = BILL_OF_LADING_NUMBERS.copy()
+
+while to_track:
+    bl = to_track.pop(0)
+
+    try:
+        maersk.track_shipment(bl)
+        time.sleep(random.randint(3, 5))
+    except Exception as e:
+        maersk_driver.save_screenshot(f"Errors/{bl}_error.png")
+        to_track.append(bl)  # retry later
+        time.sleep(3) 
+
+maersk.close()
+print("Successfully tracked all shipments.✔")

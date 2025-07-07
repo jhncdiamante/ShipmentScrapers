@@ -11,9 +11,10 @@ from Database.CSVDatabase import CSVDatabase
 from selenium.webdriver.common.by import By
 from Date.ScrapeTime import ScrapeTime
 import pandas as pd
+import random
 
 INPUT_FILE_PATH = r"D:\VersionClient\ShipmentScrapers\2025-23 CMA Outputv2.csv" # First column must contain the Bill of Lading numbers
-OUTPUT_FILE_PATH = r"CMA_TEST_DRIVE(1).csv" 
+OUTPUT_FILE_PATH = r"CMA_TEST_DRIVE(2).csv" 
 
 if INPUT_FILE_PATH.endswith(".csv"):
     df = pd.read_csv(INPUT_FILE_PATH)
@@ -23,7 +24,7 @@ elif INPUT_FILE_PATH.endswith(".xlsx"):
 CMA_CGM_URL = "https://www.cma-cgm.com/ebusiness/tracking/search"
 
 # Convert the first column to a list of BL numbers
-BILL_OF_LADING_NUMBERS = df.iloc[:, 1].dropna().unique().tolist()
+BILL_OF_LADING_NUMBERS = df.iloc[:, 0].dropna().unique().tolist()
 
 cma_driver_handle = NormalDriver() 
 cma_driver_handle.set_up_driver() # WARNING: Do not mask, modify, or rotate driver's original headers, it will trigger the captcha of CMA website
@@ -51,5 +52,7 @@ csv_database = CSVDatabase(OUTPUT_FILE_PATH)
 cma.attach(csv_database) # you can attach multiple databases, as long as in accordance on the subject's data format
 cma.open()
 
-for bl in BILL_OF_LADING_NUMBERS: 
+random.shuffle(BILL_OF_LADING_NUMBERS)
+for bl in ["GHC0311167A"
+]: 
     cma.track_shipment(bl)
