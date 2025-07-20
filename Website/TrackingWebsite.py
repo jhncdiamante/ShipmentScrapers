@@ -141,5 +141,8 @@ class TrackingWebsite(Subject, IWebsite):
             } | milestones_data)
         
         for container_data in containers_data:
+            logger.info(container_data)
             self.current_data = container_data
+        
+        return containers_data
             

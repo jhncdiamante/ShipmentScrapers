@@ -33,19 +33,16 @@ class MaerskContainerExpandButton(Button):
         )
         button_element.click()
 
-    @retryable(max_retries=3, delay=2, exceptions=EXCEPTIONS)
     def get_state(self) -> bool:
         # Checks the attribute of button element that states the button's current state (closed, expanded)
         button = self._get_button_element()
         return button.get_attribute("aria-expanded") == "true"
 
-    @retryable(max_retries=3, delay=2, exceptions=EXCEPTIONS)
     def get_panel_reference(self) -> str:
         # returns the ID ref of an element that expands if the said button is clicked
         button = self._get_button_element()
         return button.get_attribute("aria-controls")
 
-    @retryable(max_retries=3, delay=2, exceptions=EXCEPTIONS)
     def _get_button_element(self) -> WebElement:
         # returns the ID ref of an element that expands if the said button is clicked
         return WebDriverWait(self._element, TIMEOUT).until(

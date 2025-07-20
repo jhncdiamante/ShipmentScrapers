@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipment Scraper Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+            gap: 0;
+        }
+        /* --- Table Responsiveness --- */
+/* The parent container needs to handle overflow */
+.table-container { /* This is the div that holds the section title and tableContainer */
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    /* Remove 'overflow: hidden;' from .table-container if it's there,
+       as it might prevent the scrollbar on its child. */
+}
+
+.table-responsive-container {
+    overflow-x: auto; /* This is the magic for horizontal scrolling */
+    -webkit-overflow-scrolling: touch; /* Improves scrolling performance on iOS */
+    max-width: 100%; /* Ensure it doesn't exceed its parent's width */
+    margin-top: 1rem; /* Add some space if needed */
+}
+
+.data-table {
+    width: 100%; /* Make the table try to fill its container */
+    border-collapse: collapse;
+    /* Optional: Set a min-width to ensure the table is always wider than the container
+       if its content demands it, which forces the scrollbar.
+       Adjust this value based on how wide your content truly is.
+       A good starting point might be slightly larger than the content in a full-width desktop view.
+    */
+    min-width: 1400px; /* Example: Adjust this value as needed based on your content. */
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem 0.5rem; /* Reduced padding for smaller cells */
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.8em; /* Make font size smaller */
+    white-space: nowrap; /* Crucial: Prevents text wrapping, forcing cells to expand horizontally */
+    vertical-align: middle; /* Align content vertically in the middle */
+}
+
+.data-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    position: sticky; /* Keeps headers visible on horizontal scroll */
+    top: 0; /* Important for sticky positioning */
+    z-index: 10; /* Ensures headers are above scrolling content */
+}
+
+/* Optional: Shrink specific columns if they contain less content */
+.data-table td:nth-child(1), /* Scrape Time */
+.data-table td:nth-child(4), /* Status */
+.data-table td:nth-child(5) /* ETA */
+{
+    min-width: 120px; /* Example: Give minimum width to certain columns */
+}
+
+/* You can target specific columns for smaller width if their content is short */
+.data-table td:nth-child(2) { /* Shipment ID */
+    min-width: 150px;
+}
+.data-table td:nth-child(3) { /* Container ID */
+    min-width: 150px;
+}
+.data-table td:nth-child(6), /* Gate in */
+.data-table td:nth-child(7), /* Departure */
+.data-table td:nth-child(8), /* Arrival */
+.data-table td:nth-child(9), /* Discharge */
+.data-table td:nth-child(10) /* Gate Out */
+{
+    min-width: 100px; /* Adjust for dates/times if they are short */
+}
+
+.data-table td:nth-child(11), /* Departure Vessel Name */
+.data-table td:nth-child(13) /* Arrival Vessel Name */
+{
+    min-width: 180px; /* Vessel names might be longer */
+}
+
+/* --- Status Badge refinement for smaller size --- */
+.status-badge {
+    padding: 0.2em 0.5em; /* Reduced padding */
+    font-size: 0.75em; /* Smaller font size */
+    border-radius: 12px; /* Slightly smaller border-radius */
+}
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 2rem 1.5rem;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4f46e5;
+        }
+
+        .upload-section {
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 2rem;
+            /* text-align: center;  <-- Remove this, flexbox will handle it */
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f9fafb;
+
+            /* --- ADD THESE FLEXBOX PROPERTIES FOR CENTERING --- */
+            display: flex; /* Make it a flex container */
+            flex-direction: column; /* Stack items vertically */
+            justify-content: center; /* Center items vertically */
+            align-items: center; /* Center items horizontally */
+            min-height: 150px; /* Give it a minimum height to see vertical centering effect */
+        }
+        .upload-area:hover {
+            border-color: #4f46e5;
+            background: #f0f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #4f46e5;
+            background: #e0e7ff;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .stat-change {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-bar-container {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .results-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .data-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .data-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-processing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .failed-items {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .failed-item {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .results-section {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-ship"></i>
+                Scraper Dashboard
+            </div>
+
+            <div class="upload-section">
+                <h3>Upload Files</h3>
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #6b7280; margin-bottom: 1rem;"></i>
+                    <p>Drop CSV/Excel files here or click to browse</p>
+                    <input type="file" class="file-input" id="fileInput" accept=".csv,.xlsx" multiple>
+                </div>
+                <p style="font-size: 0.875rem; color: #6b7280; margin-top: 0.5rem;">
+                    First column should contain BL numbers
+                </p>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <label for="scraperSelect" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Scraper Type:</label>
+                <select id="scraperSelect" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 8px;">
+                    <option value="cma">CMA-CGM</option>
+                    <option value="maersk">Maersk</option>
+                    <option value="one">One-Ecomm</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" id="startScraping" style="width: 100%; margin-bottom: 1rem;">
+                <i class="fas fa-play"></i>
+                Start Scraping
+            </button>
+
+            <button class="btn btn-danger" id="stopScraping" style="width: 100%;" disabled>
+                <i class="fas fa-stop"></i>
+                Stop Scraping
+            </button>
+        </div>
+
+        <div class="main-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <div class="stat-value" id="totalItems">0</div>
+                    <div class="stat-label">Total Items</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        Ready to process
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="stat-value" id="completedItems">0</div>
+                    <div class="stat-label">Completed</div>
+                    <div class="stat-change positive" id="completedPercentage">
+                        <i class="fas fa-arrow-up"></i>
+                        0%
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-value" id="failedItems">0</div>
+                    <div class="stat-label">Failed</div>
+                    <div class="stat-change negative" id="failedPercentage">
+                        <i class="fas fa-arrow-down"></i>
+                        0%
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-value" id="successRate">100%</div>
+                    <div class="stat-label">Success Rate</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        Excellent
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <div class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Scraping Progress
+                </div>
+                <div id="progressInfo">No active scraping session</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+                </div>
+                <div id="progressText">0% Complete</div>
+            </div>
+
+            <div class="results-section">
+                <div class="table-container">
+                    <div class="section-title">
+                        <i class="fas fa-table"></i>
+                        Scraping Results
+                    </div>
+                    <div id="tableContainer">
+                        <p style="color: #6b7280; text-align: center; padding: 2rem;">
+                            No results yet. Upload files and start scraping to see data.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="failed-items">
+                    <div class="section-title">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Failed Items
+                    </div>
+                    <div id="failedItemsList">
+                        <p style="color: #6b7280; text-align: center;">No failed items</p>
+                    </div>
+                    <button class="btn btn-primary" id="retryFailed" style="margin-top: 1rem; width: 100%;" disabled>
+                        <i class="fas fa-redo"></i>
+                        Retry Failed Items
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ScraperDashboard {
+            constructor() {
+                this.socket = io();
+                this.isScrapingActive = false;
+                this.totalItems = 0;
+                this.completedItems = 0;
+                this.failedItems = [];
+                this.results = [];
+                
+                this.initializeEventListeners();
+                this.initializeSocketEvents();
+            }
+
+            initializeEventListeners() {
+                // File upload
+                const uploadArea = document.getElementById('uploadArea');
+                const fileInput = document.getElementById('fileInput');
+
+                uploadArea.addEventListener('click', () => fileInput.click());
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    this.handleFiles(e.dataTransfer.files);
+                });
+
+                fileInput.addEventListener('change', (e) => {
+                    this.handleFiles(e.target.files);
+                });
+
+                // Control buttons
+                document.getElementById('startScraping').addEventListener('click', () => {
+                    this.startScraping();
+                });
+
+                document.getElementById('stopScraping').addEventListener('click', () => {
+                    this.stopScraping();
+                });
+
+                document.getElementById('retryFailed').addEventListener('click', () => {
+                    this.retryFailedItems();
+                });
+            }
+
+            initializeSocketEvents() {
+                this.socket.on('connect', () => {
+                    console.log('Connected to server');
+                });
+
+                this.socket.on('scraping_progress', (data) => {
+                    this.updateProgress(data);
+                });
+
+                this.socket.on('item_completed', (data) => {
+                    this.handleItemCompleted(data);
+                });
+
+                this.socket.on('item_failed', (data) => {
+                    this.handleItemFailed(data);
+                });
+
+                this.socket.on('job_completed', (data) => {
+                    this.handleJobCompleted(data);
+                });
+
+                this.socket.on('job_failed', (data) => {
+                    this.handleJobFailed(data);
+                });
+            }
+
+            handleFiles(files) {
+                if (files.length === 0) return;
+
+                const formData = new FormData();
+                formData.append('file', files[0]);
+
+                // Show loading state
+                document.getElementById('uploadArea').innerHTML = `
+                    <div class="loading"></div>
+                    <p>Processing file...</p>
+                `;
+
+                fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.totalItems = data.total_count;
+                        this.blNumbers = data.bl_numbers;
+                        
+                        document.getElementById('totalItems').textContent = this.totalItems;
+                        document.getElementById('uploadArea').innerHTML = `
+                            <i class="fas fa-check-circle" style="font-size: 2rem; color: #10b981; margin-bottom: 1rem;"></i>
+                            <p><strong>${data.filename}</strong></p>
+                            <p>${this.totalItems} BL numbers loaded</p>
+                        `;
+                        document.getElementById('startScraping').disabled = false;
+                    } else {
+                        throw new Error(data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Upload error:', error);
+                    document.getElementById('uploadArea').innerHTML = `
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
+                        <p>Error: ${error.message}</p>
+                        <p>Click to try again</p>
+                    `;
+                });
+            }
+
+            startScraping() {
+                if (!this.blNumbers || this.blNumbers.length === 0) {
+                    alert('Please upload a file first');
+                    return;
+                }
+
+                const scraperType = document.getElementById('scraperSelect').value;
+
+                fetch('/api/scraping/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        scraper_type: scraperType,
+                        bl_numbers: this.blNumbers
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.currentJobId = data.job_id;
+                        this.isScrapingActive = true;
+                        
+                        document.getElementById('startScraping').disabled = true;
+                        document.getElementById('stopScraping').disabled = false;
+                        document.getElementById('progressInfo').textContent = 'Initializing scraping...';
+                        
+                        // Reset counters and progress bar
+                        this.completedItems = 0;
+                        this.failedItems = [];
+                        this.results = [];
+                        document.getElementById('progressBar').style.width = '0%'; // Reset progress bar
+                        document.getElementById('progressText').textContent = '0% Complete'; // Reset progress text
+                        document.getElementById('failedItemsList').innerHTML = '<p style="color: #6b7280; text-align: center;">No failed items</p>'; // Clear failed items list
+                        document.getElementById('tableContainer').innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">No results yet. Upload files and start scraping to see data.</p>'; // Clear results table
+                        this.updateStats(); // This will update the stats cards
+                    } else {
+                        throw new Error(data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Start scraping error:', error);
+                    alert('Error starting scraping: ' + error.message);
+                });
+            }
+
+            stopScraping() {
+                if (!this.currentJobId) return;
+
+                fetch(`/api/scraping/stop/${this.currentJobId}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.isScrapingActive = false;
+                        document.getElementById('startScraping').disabled = false;
+                        document.getElementById('stopScraping').disabled = true;
+                        document.getElementById('progressInfo').textContent = 'Scraping stopped by user';
+                    }
+                })
+                .catch(error => {
+                    console.error('Stop scraping error:', error);
+                });
+            }
+
+            updateProgress(data) {
+                const progress = data.progress;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                document.getElementById('progressText').textContent = `${progress.toFixed(1)}% Complete`;
+                document.getElementById('progressInfo').textContent = `Processing: ${data.current_bl} (${data.current_item}/${data.total_items})`;
+            }
+
+           // In your ScraperDashboard class (or equivalent frontend logic)
+
+            handleItemCompleted(data) {
+                this.completedItems = data.completed_items; // Update completion stats
+
+                if (data.success && data.result) {
+                    // 'data.result' is confirmed to be a list of dictionaries.
+                    // Iterate over this list and add each individual dictionary (container data)
+                    // to the dashboard's 'this.results' array.
+                    for (const containerData of data.result) {
+                        this.results.push(containerData);
+                    }
+                } else if (!data.success) {
+                    // Log if an item failed, though 'item_failed' event would handle specific errors
+                    console.warn('Item completed event received with success: false. Data:', data);
+                }
+
+                // After updating 'this.results', ensure the UI reflects the changes
+                this.updateStats(); // Update progress bar, counts
+                this.updateResultsTable(); // Re-render the results table
+                // The export button's visibility is tied to this.results.length > 0,
+                // which will now correctly reflect the number of individual scraped items.
+            }
+
+            handleItemFailed(data) {
+                this.completedItems = data.completed_items;
+                this.failedItems.push({
+                    bl_number: data.bl_number,
+                    error: data.error,
+                    timestamp: new Date().toISOString()
+                });
+                
+                this.updateStats();
+                this.updateFailedItems();
+            }
+
+            handleJobCompleted(data) {
+                this.isScrapingActive = false;
+                document.getElementById('startScraping').disabled = false;
+                document.getElementById('stopScraping').disabled = true;
+                document.getElementById('progressInfo').textContent = `Scraping completed! Success rate: ${data.success_rate.toFixed(1)}%`;
+                
+                // Enable retry button if there are failed items
+                document.getElementById('retryFailed').disabled = this.failedItems.length === 0;
+            }
+
+            handleJobFailed(data) {
+                this.isScrapingActive = false;
+                document.getElementById('startScraping').disabled = false;
+                document.getElementById('stopScraping').disabled = true;
+                document.getElementById('progressInfo').textContent = `Scraping failed: ${data.error}`;
+            }
+
+            updateStats() {
+                document.getElementById('totalItems').textContent = this.totalItems;
+                document.getElementById('completedItems').textContent = this.completedItems;
+                document.getElementById('failedItems').textContent = this.failedItems.length;
+                
+                const completedPercentage = this.totalItems > 0 ? (this.completedItems / this.totalItems * 100) : 0;
+                const failedPercentage = this.totalItems > 0 ? (this.failedItems.length / this.totalItems * 100) : 0;
+                const successRate = this.completedItems > 0 ? ((this.completedItems - this.failedItems.length) / this.completedItems * 100) : 100;
+                
+                document.getElementById('completedPercentage').innerHTML = `<i class="fas fa-arrow-up"></i> ${completedPercentage.toFixed(1)}%`;
+                document.getElementById('failedPercentage').innerHTML = `<i class="fas fa-arrow-down"></i> ${failedPercentage.toFixed(1)}%`;
+                document.getElementById('successRate').textContent = `${successRate.toFixed(1)}%`;
+            }
+
+            updateResultsTable() {
+    const tableContainer = document.getElementById('tableContainer');
+
+    if (this.results.length === 0) {
+        tableContainer.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">No results yet.</p>';
+        return;
+    }
+
+    const tableHtml = `
+        <div class="table-responsive-container"> <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Scrape Time</th>
+                        <th>Shipment ID</th>
+                        <th>Container ID</th>
+                        <th>Status</th>
+                        <th>ETA</th>
+                        <th>Gate in</th>
+                        <th>Departure</th>
+                        <th>Arrival</th>
+                        <th>Discharge</th>
+                        <th>Gate Out</th>
+                        <th>Departure Vessel Name</th>
+                        <th>Departure Voyage ID</th>
+                        <th>Arrival Vessel Name</th>
+                        <th>Arrival Voyage ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.results.map(result => `
+                        <tr>
+                            <td>${new Date(result['Scrape Time']).toLocaleString() || '-'}</td>
+                            <td><strong>${result['Shipment ID'] || '-'}</strong></td>
+                            <td>${result['Container ID'] || '-'}</td>
+                            <td><span class="status-badge ${this.getStatusClass(result['Status'])}">${result['Status'] || '-'}</span></td>
+                            <td>${result['ETA'] || '-'}</td>
+                            <td>${result['Gate in'] || '-'}</td>
+                            <td>${result['Departure'] || '-'}</td>
+                            <td>${result['Arrival'] || '-'}</td>
+                            <td>${result['Discharge'] || '-'}</td>
+                            <td>${result['Gate out'] || '-'}</td>
+                            <td>${result['Departure Vessel Name'] || '-'}</td>
+                            <td>${result['Departure Voyage ID'] || '-'}</td>
+                            <td>${result['Arrival Vessel Name'] || '-'}</td>
+                            <td>${result['Arrival Voyage ID'] || '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div> <div style="margin-top: 1rem;">
+            <button class="btn btn-primary" onclick="dashboard.exportResults()">
+                <i class="fas fa-download"></i>
+                Export Results
+            </button>
+        </div>
+    `;
+
+    tableContainer.innerHTML = tableHtml;
+}
+         
+            updateFailedItems() {
+                const failedItemsList = document.getElementById('failedItemsList');
+                
+                if (this.failedItems.length === 0) {
+                    failedItemsList.innerHTML = '<p style="color: #6b7280; text-align: center;">No failed items</p>';
+                    return;
+                }
+
+                const failedHtml = this.failedItems.map(item => `
+                    <div class="failed-item">
+                        <strong>${item.bl_number}</strong>
+                        <p style="color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem;">${item.error}</p>
+                        <p style="color: #6b7280; font-size: 0.75rem; margin-top: 0.25rem;">
+                            ${new Date(item.timestamp).toLocaleString()}
+                        </p>
+                    </div>
+                `).join('');
+                
+                failedItemsList.innerHTML = failedHtml;
+                document.getElementById('retryFailed').disabled = false;
+            }
+
+            getStatusClass(status) {
+                const statusLower = (status || '').toLowerCase();
+                if (statusLower.includes('completed') || statusLower.includes('delivered')) {
+                    return 'status-success';
+                } else if (statusLower.includes('failed') || statusLower.includes('error')) {
+                    return 'status-error';
+                } else {
+                    return 'status-processing';
+                }
+            }
+
+            exportResults() {
+                if (!this.currentJobId) {
+                    alert('No active job to export');
+                    return;
+                }
+
+                window.open(`/api/scraping/export/${this.currentJobId}`, '_blank');
+            }
+
+            retryFailedItems() {
+                if (this.failedItems.length === 0) return;
+
+                const failedBlNumbers = this.failedItems.map(item => item.bl_number);
+                const scraperType = document.getElementById('scraperSelect').value;
+
+                fetch('/api/scraping/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        scraper_type: scraperType,
+                        bl_numbers: failedBlNumbers
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.currentJobId = data.job_id;
+                        this.isScrapingActive = true;
+                        this.totalItems = failedBlNumbers.length;
+                        this.completedItems = 0;
+                        this.failedItems = [];
+                        
+                        document.getElementById('startScraping').disabled = true;
+                        document.getElementById('stopScraping').disabled = false;
+                        document.getElementById('retryFailed').disabled = true;
+                        document.getElementById('progressInfo').textContent = 'Retrying failed items...';
+                        
+                        // Reset progress bar and related displays for retry
+                        document.getElementById('progressBar').style.width = '0%';
+                        document.getElementById('progressText').textContent = '0% Complete';
+                        document.getElementById('failedItemsList').innerHTML = '<p style="color: #6b7280; text-align: center;">No failed items</p>'; // Clear failed items list on retry
+                        this.updateStats();
+                    }
+                })
+                .catch(error => {
+                    console.error('Retry failed items error:', error);
+                    alert('Error retrying failed items: ' + error.message);
+                });
+            }
+        }
+
+        // Initialize the dashboard
+        const dashboard = new ScraperDashboard();
+    </script>
+</body>
+</html>

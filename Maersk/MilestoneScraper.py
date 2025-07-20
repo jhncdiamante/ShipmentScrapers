@@ -16,7 +16,7 @@ class MaerskMilestoneScraper(IMilestoneScraper):
 
     def get_event(self) -> str:
         event = self._milestone_element.find_element(By.TAG_NAME, "span").text.strip()
-        if "arrival" in event.lower():
+        if "vessel arrival" in event.lower():
             return "Arrival"
         elif "departure" in event.lower():
             return "Departure"
