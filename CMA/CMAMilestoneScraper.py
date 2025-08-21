@@ -73,6 +73,13 @@ class CMAMilestoneScraper(IMilestoneScraper):
 
         return date.split(',', 1)[1].strip()
 
+    def get_location(self) -> str:
+        location_element = WebDriverWait(self._milestone_element, TIMEOUT).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, ".location.k-table-td span"))
+        )
+        return location_element.text.strip() if location_element.text.strip() != "" else "Unavailable"
+
+
     def _normalize_event(self, event: str) -> str:
         events = {
             "READY TO BE LOADED": "Gate in",

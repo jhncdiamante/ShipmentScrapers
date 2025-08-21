@@ -14,3 +14,7 @@ class IMilestoneScraper(ABC):
     @abstractmethod
     def get_vessel(self):
         pass
+
+    @abstractmethod
+    def get_location(self):
+        pass

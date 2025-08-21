@@ -57,9 +57,9 @@ maersk = TrackingWebsite(
     maersk_driver,
     search_feature,
     cookie_handler,
-    shipment_scraper_factory=MaerskShipmentScraper,
-    container_scraper_factory=MaerskContainerScraper,
-    milestone_scraper_factory=MaerskMilestoneScraper,
+    shipment_scraper=MaerskShipmentScraper,
+    container_scraper=MaerskContainerScraper,
+    milestone_scraper=MaerskMilestoneScraper,
     scrape_time=scrape_time,
 )
 csv_observer = CSVDatabase(OUTPUT_FILE_PATH)

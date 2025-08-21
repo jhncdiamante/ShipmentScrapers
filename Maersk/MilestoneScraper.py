@@ -3,6 +3,7 @@ from typing import Tuple, Optional
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 import re
+from selenium.common.exceptions import NoSuchElementException
 
 
 class MaerskMilestoneScraper(IMilestoneScraper):
@@ -16,7 +17,7 @@ class MaerskMilestoneScraper(IMilestoneScraper):
 
     def get_event(self) -> str:
         event = self._milestone_element.find_element(By.TAG_NAME, "span").text.strip()
-        if "vessel arrival" in event.lower():
+        if "arrival" in event.lower():
             return "Arrival"
         elif "departure" in event.lower():
             return "Departure"
@@ -31,3 +32,10 @@ class MaerskMilestoneScraper(IMilestoneScraper):
             voyage_id = match.group(2).strip()
             return voyage_id, vessel_name
         return None, None
+
+    def get_location(self):
+        try:
+            location_div = self._milestone_element.find_element(By.CSS_SELECTOR, 'div[data-test="location-name"]')
+        except NoSuchElementException:
+            return None
+        return location_div.find_element(By.TAG_NAME, "strong").text.strip()

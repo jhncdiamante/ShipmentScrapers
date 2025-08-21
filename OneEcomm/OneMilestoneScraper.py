@@ -55,3 +55,7 @@ class OneMilestoneScraper(IMilestoneScraper):
             if event_pattern in match_string:
                 return event_name
         return event
+
+    def get_location(self) -> str:
+        return self._milestone_element.find_element(By.XPATH, LOCATION_CELL_XPATH).text.strip()
+        

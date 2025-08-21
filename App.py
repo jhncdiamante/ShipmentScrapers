@@ -19,6 +19,7 @@ from Button.Button import Button
 from Search.SearchFeature import SearchFeature
 from CookiesManager.NoCookieHandler import NoCookieHandler
 from Website.TrackingWebsite import TrackingWebsite
+from Maersk.Website import MaerskWebsite
 from CMA.CMAContainerEvaluator import smart_container_scraper_factory
 from CMA.CMAMilestoneScraper import CMAMilestoneScraper
 from CMA.CMAShipmentScraper import CMAShipmentScraper
@@ -206,7 +207,7 @@ class ScrapingManager:
                     'job_id': job_id,
                     'total_results': len(job.results),
                     'total_failed': len(job.failed_items),
-                    'success_rate': (len(job.results) / job.total_items) * 100 if job.total_items > 0 else 0
+                    'success_rate': ((job.completed_items - len(job.failed_items)) / job.total_items) * 100 if job.total_items > 0 else 0
                 })
                 
                 logger.info(f"Job {job_id} completed. Results: {len(job.results)}, Failed: {len(job.failed_items)}")
@@ -223,7 +224,7 @@ class ScrapingManager:
         
         finally:
             # Cleanup
-            if scraper_instance and hasattr(scraper_instance, 'driver'):
+            if scraper_instance and hasattr(scraper_instance, '_driver'):
                 try:
                     scraper_instance.close()
                 except:
@@ -254,10 +255,11 @@ class ScrapingManager:
             one_driver,
             search_feature,
             cookie_handler,
-            shipment_scraper_factory=OneShipmentScraper,
-            container_scraper_factory=OneContainerScraper,
-            milestone_scraper_factory=OneMilestoneScraper,
+            OneShipmentScraper,
+            OneContainerScraper,
+            OneMilestoneScraper,
             scrape_time=scrape_time,
+            name="ONE Ecomm"
         )
 
         one.open()
@@ -285,15 +287,16 @@ class ScrapingManager:
         cookie_handler = CookieHandler(maersk_driver, allow_cookies_button=allow_button)
         scrape_time = ScrapeTime()
 
-        maersk = TrackingWebsite(
+        maersk = MaerskWebsite(
             MAERSK_TRACKING_URL,
             maersk_driver,
             search_feature,
             cookie_handler,
-            shipment_scraper_factory=MaerskShipmentScraper,
-            container_scraper_factory=MaerskContainerScraper,
-            milestone_scraper_factory=MaerskMilestoneScraper,
+            MaerskShipmentScraper,
+            MaerskContainerScraper,
+            MaerskMilestoneScraper,
             scrape_time=scrape_time,
+            name="Maersk"
         )
 
         maersk.open()
@@ -321,10 +324,11 @@ class ScrapingManager:
             driver=driver,
             search_feature=search_feature,
             cookie_handler=cookie_handler,
-            shipment_scraper_factory=CMAShipmentScraper,
-            container_scraper_factory=smart_container_scraper_factory,
-            milestone_scraper_factory=CMAMilestoneScraper,
+            shipment_scraper=CMAShipmentScraper,
+            container_scraper=smart_container_scraper_factory,
+            milestone_scraper=CMAMilestoneScraper,
             scrape_time=scrape_time,
+            name="CMA-CGM"
         )
         
         cma_scraper.open()
@@ -461,6 +465,9 @@ def export_results(job_id):
     # Convert results to DataFrame and return CSV
     df = pd.DataFrame(job.results)
     csv_data = df.to_csv(index=False)
+
+    #shipment_ids = list(set([shipment.get("Shipment ID") for shipment in job.results]))
+
     
     from flask import Response
     return Response(
@@ -478,4 +485,4 @@ def handle_disconnect():
     logger.info('Client disconnected')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=False, host='0.0.0.0', port=0000)

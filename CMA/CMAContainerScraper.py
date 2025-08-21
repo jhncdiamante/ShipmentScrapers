@@ -2,7 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
-
+from collections import deque
 from selenium.webdriver.remote.webdriver import WebDriver
 from Helpers.retryable import retryable
 from selenium.common.exceptions import (
@@ -53,6 +53,10 @@ CONTAINER_WNS_ID_XPATH = "//li[starts-with(normalize-space(text()), 'Container')
 CWNS_STATUS_CSS_SELECTOR = "span.capsule.primary" # css
 CWS_STATUS_CSS_SELECTOR = "div.capsule.info-dark" # css
 MILESTONE_PANEL_CSS_SELECTOR = "section.result-card--details" # css
+
+
+DESTINATION_PANEL_CLASS_NAME = "timeline--item-description"
+
 TIMEOUT = 30
 
 
@@ -129,7 +133,7 @@ class CMAContainerScraper(IContainerScraper):
             row.find_element(By.XPATH, GRANDPARENT_ELEMENT) for row in ref_rows
         ]
 
-        return milestone_rows
+        return deque(milestone_rows)
 
     @retryable(max_retries=3, delay=2, exceptions=(TimeoutException,))
     def get_status(self, last_event_css_selector) -> str:
@@ -143,6 +147,36 @@ class CMAContainerScraper(IContainerScraper):
             if last_event in {"empty in depot", "container to consignee"}
             else "On-going"
         )
+
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, AssertionError))
+    def _get_place_receipt(self, receipt_index: int) -> str:
+        destination_panels = WebDriverWait(self._container_element, TIMEOUT).until(
+            EC.visibility_of_all_elements_located((By.CLASS_NAME, DESTINATION_PANEL_CLASS_NAME))
+        )
+        assert len(destination_panels) == 2
+        destination = WebDriverWait(destination_panels[receipt_index], TIMEOUT).until(EC.visibility_of_element_located((By.TAG_NAME, "strong"))).text.strip()
+        return destination
+    
+    def get_origin(self):
+        return self._get_place_receipt(0)
+    
+    def get_destination(self):
+        return self._get_place_receipt(1)
+
+    @retryable(
+        max_retries=3, delay=3, exceptions=(TimeoutException, NoSuchElementException)
+    )
+    def get_terminals(self) -> list[str]:
+        location_elements = WebDriverWait(self._container_element, TIMEOUT).until(
+            EC.visibility_of_all_elements_located((By.CSS_SELECTOR, ".location.k-table-td"))
+        )
+
+        return [
+                location.text.split()[0].strip()
+                for location in location_elements
+                if location.text.strip()  # filters out ""
+            ]
+
 
 
 class CMAContainerWithSiblingsScraper(CMAContainerScraper):

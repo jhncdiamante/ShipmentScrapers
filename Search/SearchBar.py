@@ -21,14 +21,19 @@ class SearchBar(ISearchBar):
         search_bar = WebDriverWait(self._driver, 60).until(
             EC.element_to_be_clickable(self._locator)
         )
+        
         if self._has_content(search_bar):
-            log.info("Clearing previous keyword..")
-            search_bar.clear()
-        search_bar.send_keys(keyword)
-        self._driver.implicitly_wait(2)
-        if not self._has_content(search_bar):
-            log.warning("No content found in search bar even after typing the keyword. Retrying...")
-            raise ValueError
+            log.info("Clearing previous keyword with JS..")
+            self._driver.execute_script("arguments[0].value = '';", search_bar)
+
+        log.info(f"Typing keyword '{keyword}' with JS..")
+        self._driver.execute_script("arguments[0].value = arguments[1];", search_bar, keyword)
+
+        # sometimes JS-set value doesn’t trigger input events, so force it
+        self._driver.execute_script(
+            "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", 
+            search_bar
+        )
 
     def _has_content(self, search_bar: WebElement) -> bool:
-        return search_bar.get_attribute("value").strip()
+        return search_bar.get_attribute("value").strip() != ""

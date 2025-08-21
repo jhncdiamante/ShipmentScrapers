@@ -7,6 +7,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 from Helpers.retryable import retryable
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, ElementClickInterceptedException, ElementNotInteractableException
+from collections import deque
+
 
 CONTAINER_CELL_XPATH = "./td[4]"
 STATUS_CELL_XPATH = "./td[9]"
@@ -64,4 +66,21 @@ class OneContainerScraper(IContainerScraper):
         milestones = WebDriverWait(milestone_table, TIMEOUT).until(
             EC.visibility_of_all_elements_located((By.XPATH, MILESTONE_ROW_XPATH))
         )
-        return milestones
+        return deque(milestones)
+    
+    @retryable(max_retries=3, delay=2, exceptions=(TimeoutException, AttributeError))
+    def _get_place_receipt(self, receipt_index: str) -> str:
+        # Wait for the element to appear
+        span_el = WebDriverWait(self._page, 10).until(
+            EC.presence_of_element_located((By.XPATH, f'(//div[@class="jui-tracking-portname"])[2]/span[{receipt_index}]'))
+        )
+
+        # Get text before/after <br>
+        lines = span_el.get_attribute("innerHTML").split("<br>")
+        return lines[1].strip() if len(lines) > 1 else None
+    
+    def get_origin(self) -> str:
+        return self._get_place_receipt("1")
+    
+    def get_destination(self):
+        return self._get_place_receipt("2")

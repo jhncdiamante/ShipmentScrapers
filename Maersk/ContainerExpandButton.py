@@ -48,3 +48,4 @@ class MaerskContainerExpandButton(Button):
         return WebDriverWait(self._element, TIMEOUT).until(
             EC.element_to_be_clickable(self._locator)
         )
+

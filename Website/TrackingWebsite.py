@@ -3,56 +3,48 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.remote.webdriver import WebDriver
 from Search.ISearchFeature import ISearchFeature
 from CookiesManager.ICookieHandler import ICookieHandler
-
 from typing import Callable
 from selenium.webdriver.remote.webelement import WebElement
 from Container.IContainer import IContainerScraper
 from Milestone.IMilestone import IMilestoneScraper
 from Shipment.IShipment import IShipmentScraper
 from Shipment.IShipment import IShipmentScraper
-from Subject.Subject import Subject
-from Date.IDate import IDate
-import time, random
 from Helpers.logging_config import setup_logger
+from Helpers.Screenshot import screenshot
 
 logger = setup_logger()
 STANDARD_EVENTS = {"Gate in", "Departure", "Arrival", "Discharge", "Gate out"}
 
 
-class TrackingWebsite(Subject, IWebsite):
+class TrackingWebsite(IWebsite):
     def __init__(
         self,
         url,
         driver,
         search_feature,
         cookie_handler,
-        shipment_scraper_factory,
-        container_scraper_factory,
-        milestone_scraper_factory,
+        shipment_scraper,
+        container_scraper,
+        milestone_scraper,
         scrape_time,
+        name
     ):
-        super().__init__()
         self.url = url
         self._driver: WebDriver = driver
         self._search_feature: ISearchFeature = search_feature
         self._cookie_handler: ICookieHandler = cookie_handler
 
-        self._shipment_scraper: Callable[[WebDriver], IShipmentScraper] = shipment_scraper_factory
-        self._container_scraper: Callable[[WebElement, WebDriver], IContainerScraper] = container_scraper_factory
-        self._milestone_scraper: Callable[[WebElement], IMilestoneScraper] = milestone_scraper_factory
-        self._scrape_time: Callable[[], IDate] = scrape_time
-        self._current_data = None
+        self._shipment_scraper: Callable[[WebDriver], IShipmentScraper] = shipment_scraper
+        self._container_scraper: Callable[[WebElement, WebDriver], IContainerScraper] = container_scraper
+        self._milestone_scraper: Callable[[WebElement], IMilestoneScraper] = milestone_scraper
+        self._scrape_time = scrape_time
+        self.name = name
 
-    @property
-    def current_data(self):
-        return self._current_data
 
-    @current_data.setter
-    def current_data(self, current_data):
-        self._current_data = current_data
-        self.notify()
+    def __str__(self):
+        return self.name
 
-    def open(self):
+    def open(self) -> None:
         self._driver.get(self.url)
         WebDriverWait(self._driver, 30).until(
             lambda _: self._driver.execute_script("return document.readyState")
@@ -60,89 +52,124 @@ class TrackingWebsite(Subject, IWebsite):
         )
         self._cookie_handler.allow_cookies_permission()
 
-    def close(self):
+    def close(self) -> None:
         self._driver.quit()
 
-    def track_shipment(self, shipment_id):
-        logger.info(f"Searching {shipment_id}...")
+    def _search_by_bill_of_lading(self, shipment_id) -> None:
         self._search_feature.search(shipment_id)
-        time.sleep(random.randint(4, 8))
-        logger.info(f"Successfully searched {shipment_id}.")
-        shipment_scraper = self._shipment_scraper(self._driver)
-        logger.info("Extracting container elements...")
-        container_elements = shipment_scraper.get_container_elements()
-        logger.info(f"Reading {len(container_elements)} containers.")
+
+    def track_shipment(self, shipment_id: int) -> dict:
+        self._search_by_bill_of_lading(shipment_id)
+        shipment = self._shipment_scraper(self._driver)
+        containers = shipment.get_container_elements()
+        self._driver.execute_script("document.body.style.zoom = '0.5'")
+
+        shipment_data = {
+            "bill_of_lading_number": shipment_id,
+            "containers": [self._process_container(c, shipment_id) for c in containers]
+        }
 
         containers_data = []
 
-        for cont_element in container_elements:
-            container_scraper = self._container_scraper(cont_element, self._driver)
-            container_id = container_scraper.get_id()
-            logger.info(f"Scraping container {container_id}")
+        for container in shipment_data.get("containers"):
+            milestones = container.get("milestones")
 
-            logger.info("Getting Status...")
-            container_status = container_scraper.get_status()
-            logger.info(f"Status: {container_status}")
-            logger.info("Getting milestones...")
-            milestone_elements = container_scraper.get_milestone_elements()
-            logger.info(f"Found {len(milestone_elements)} milestone elements.")
+            dynamic_milestones = {"Departure": [],
+                                  "Arrival": []}
 
             milestones_data = {
                 "Gate in": None,
                 "Departure": None,
-                "Arrival": None,
-                "Discharge": None,
-                "Gate out": None,
                 "Departure Vessel Name": None,
                 "Departure Voyage ID": None,
+                "Departure Location": None,
+                "Arrival": None,
                 "Arrival Vessel Name": None,
                 "Arrival Voyage ID": None,
+                "Arrival Location": None,
+                "Discharge": None,
+                "Gate out": None,
             }
+            for milestone in milestones:
+                m_event = milestone.get("event")
 
-            for m_element in milestone_elements:
-                milestone_scraper = self._milestone_scraper(m_element)
-                m_event = milestone_scraper.get_event()
                 if m_event not in STANDARD_EVENTS:
                     continue
-                m_date = milestone_scraper.get_date()
-                m_vessel = milestone_scraper.get_vessel()
+
+                m_date = milestone.get("date")
+                m_voyage_id = milestone.get("voyage_id")
+                m_voyage_name = milestone.get("voyage_name")
+
+                if m_event in {"Departure", "Arrival"}:
+                    dynamic_milestones[m_event].append(f"{m_date}, {milestone.get("location")}")
 
                 if (
                     milestones_data[m_event] is not None
-                    and m_event not in ["Gate in", "Departure"]
+                    and m_event not in {"Gate in", "Departure"}
                 ) or (milestones_data[m_event] is None):
+                    
                     milestones_data[m_event] = m_date
-                    if m_event in ["Arrival", "Departure"]:
-                        milestones_data[f"{m_event} Vessel Name"] = m_vessel[1]
-                        milestones_data[f"{m_event} Voyage ID"] = m_vessel[0]
+                    if m_event in {"Departure", "Arrival"}:
+                        milestones_data[f"{m_event} Vessel Name"] = m_voyage_name 
+                        milestones_data[f"{m_event} Voyage ID"] = m_voyage_id
+                        milestones_data[f"{m_event} Location"] = milestone.get("location")
 
-            estimated_time_arrival = milestones_data.get("Arrival", "Unavailable")
-            if container_status == "On-going":
-                for event_data in [
-                    "Arrival",
-                    "Arrival Vessel Name",
-                    "Arrival Voyage ID",
-                    "Discharge",
-                    "Gate out",
-                ]:
-                    milestones_data[event_data] = None
-            else:
-                for event, date in milestones_data.items():
-                    if not date:
-                        logger.error(f"No data parsed in milestone: {event}")
 
-            current_time = self._scrape_time.get_current_time()
+                estimated_time_arrival = milestones_data.get("Arrival")
+
+                current_time = self._scrape_time.get_current_time()
+
+                
             containers_data.append({
                 "Scrape Time": current_time,
                 "Shipment ID": shipment_id,
-                "Container ID": container_id,
-                "Status": container_status,
+                "Origin": container.get("origin"),
+                "Destination": container.get("destination"),
+                "Container ID": container.get("identifier"),
+                "Status": container.get("status"),
                 "ETA": estimated_time_arrival,
-            } | milestones_data)
-        
-        for container_data in containers_data:
-            logger.info(container_data)
-            self.current_data = container_data
-        
+            } | milestones_data | 
+            {
+                "Arrival Entries": "; ".join(dynamic_milestones["Arrival"]),
+                "Departure Entries": "; ".join(dynamic_milestones["Departure"]),
+
+            })
+
         return containers_data
-            
+
+
+    def _process_container(self, container_element: WebElement, bl_number: str) -> dict:
+        container = self._container_scraper(container_element, self._driver)
+        container_id = container.get_id()
+        container_data = {
+            "identifier": container_id,
+            "status": container.get_status(),
+            "milestones": self._process_milestones(container),
+            "origin": container.get_origin(),
+            "destination": container.get_destination(),
+        }
+
+        screenshot(self._driver, str(self), bl_number=bl_number, container_number=container_id)
+
+        return container_data
+
+
+    def _process_milestones(self, container) -> list:
+        milestones = container.get_milestone_elements()
+        milestones_data = []
+        for milestone in milestones:
+            milestone = self._milestone_scraper(milestone)
+            event = milestone.get_event()
+            voyage_id, voyage_name = milestone.get_vessel()
+            milestone_location = milestone.get_location()
+            milestone_date = milestone.get_date()
+
+            milestones_data.append({
+                "event": event,
+                "date": milestone_date,
+                "voyage_id": voyage_id,
+                "voyage_name": voyage_name,
+                "location": milestone_location,
+            })
+        return milestones_data
+    

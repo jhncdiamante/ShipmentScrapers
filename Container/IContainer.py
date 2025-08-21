@@ -18,3 +18,11 @@ class IContainerScraper(ABC):
     @abstractmethod
     def get_estimated_time_arrival(self):
         pass
+
+    @abstractmethod
+    def get_destination(self):
+        pass
+    
+    @abstractmethod
+    def get_origin(self):
+        pass

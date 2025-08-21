@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
+
         * {
             margin: 0;
             padding: 0;
@@ -16,7 +17,7 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00205C 0%, #0c2e5e 100%);
             color: #333;
             min-height: 100vh;
         }
@@ -70,7 +71,7 @@
 .data-table th {
     background: #f9fafb;
     font-weight: 600;
-    color: #374151;
+    color: #303641;
     position: sticky; /* Keeps headers visible on horizontal scroll */
     top: 0; /* Important for sticky positioning */
     z-index: 10; /* Ensures headers are above scrolling content */
@@ -133,7 +134,7 @@
             margin-bottom: 2rem;
             font-size: 1.5rem;
             font-weight: 700;
-            color: #4f46e5;
+            color: #133573;
         }
 
         .upload-section {
@@ -157,12 +158,12 @@
             min-height: 150px; /* Give it a minimum height to see vertical centering effect */
         }
         .upload-area:hover {
-            border-color: #4f46e5;
+            border-color: #142d58;
             background: #f0f9ff;
         }
 
         .upload-area.dragover {
-            border-color: #4f46e5;
+            border-color: #13325e;
             background: #e0e7ff;
         }
 
@@ -184,7 +185,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #223770 0%, #337487 100%);
             color: white;
         }
 
@@ -194,10 +195,13 @@
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            background: linear-gradient(135deg, #c33636 0%, #cf534c 100%);
             color: white;
         }
-
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -275,7 +279,7 @@
 
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(90deg, #0a4f94 0%, #3485a0 100%);
             transition: width 0.3s ease;
             border-radius: 10px;
         }
@@ -363,7 +367,7 @@
             width: 20px;
             height: 20px;
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border-top: 3px solid #2074c4;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -385,7 +389,7 @@
         .section-title {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #1f2937;
+            color: #282d35;
             margin-bottom: 1rem;
             display: flex;
             align-items: center;
@@ -409,7 +413,22 @@
                 grid-template-columns: 1fr;
             }
         }
+        #scraperSelect {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #3560a1;
+    border-radius: 8px;
+    outline: none; /* removes browser's default focus ring */
+}
+
+#scraperSelect:focus,
+#scraperSelect:active {
+    border-color: #3560a1;
+    outline: none;
+}
+
     </style>
+    
 </head>
 <body>
     <div class="dashboard-container">
@@ -433,7 +452,7 @@
 
             <div style="margin-bottom: 2rem;">
                 <label for="scraperSelect" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Scraper Type:</label>
-                <select id="scraperSelect" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 8px;">
+                <select id="scraperSelect" style="width: 100%; padding: 0.75rem; border: 2px solid #144151; border-radius: 8px;">
                     <option value="cma">CMA-CGM</option>
                     <option value="maersk">Maersk</option>
                     <option value="one">One-Ecomm</option>
@@ -454,7 +473,7 @@
         <div class="main-content">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #2f65a8 0%, #2f74b9 100%);">
                         <i class="fas fa-list"></i>
                     </div>
                     <div class="stat-value" id="totalItems">0</div>
@@ -505,7 +524,7 @@
             <div class="progress-section">
                 <div class="section-title">
                     <i class="fas fa-chart-bar"></i>
-                    Scraping Progress
+                    Progress
                 </div>
                 <div id="progressInfo">No active scraping session</div>
                 <div class="progress-bar-container">
@@ -518,7 +537,7 @@
                 <div class="table-container">
                     <div class="section-title">
                         <i class="fas fa-table"></i>
-                        Scraping Results
+                        Results
                     </div>
                     <div id="tableContainer">
                         <p style="color: #6b7280; text-align: center; padding: 2rem;">
@@ -819,18 +838,28 @@
                     <tr>
                         <th>Scrape Time</th>
                         <th>Shipment ID</th>
+                        <th>Origin</th>
+                        <th>Destination</th>
+
                         <th>Container ID</th>
                         <th>Status</th>
                         <th>ETA</th>
                         <th>Gate in</th>
                         <th>Departure</th>
+                        <th>Departure Location</th>
                         <th>Arrival</th>
+                        <th>Arrival Location</th>
                         <th>Discharge</th>
                         <th>Gate Out</th>
                         <th>Departure Vessel Name</th>
                         <th>Departure Voyage ID</th>
+
                         <th>Arrival Vessel Name</th>
                         <th>Arrival Voyage ID</th>
+                        <th>Arrival Entries</th>
+                        <th>Departure Entries</th>
+
+
                     </tr>
                 </thead>
                 <tbody>
@@ -838,18 +867,29 @@
                         <tr>
                             <td>${new Date(result['Scrape Time']).toLocaleString() || '-'}</td>
                             <td><strong>${result['Shipment ID'] || '-'}</strong></td>
+                            <td>${result['Origin'] || '-'}</td>
+                            <td>${result['Destination'] || '-'}</td>
+
                             <td>${result['Container ID'] || '-'}</td>
                             <td><span class="status-badge ${this.getStatusClass(result['Status'])}">${result['Status'] || '-'}</span></td>
                             <td>${result['ETA'] || '-'}</td>
                             <td>${result['Gate in'] || '-'}</td>
                             <td>${result['Departure'] || '-'}</td>
+                            <td>${result['Departure Location'] || '-'}</td>
+
                             <td>${result['Arrival'] || '-'}</td>
+                            <td>${result['Arrival Location'] || '-'}</td>
+
                             <td>${result['Discharge'] || '-'}</td>
                             <td>${result['Gate out'] || '-'}</td>
                             <td>${result['Departure Vessel Name'] || '-'}</td>
                             <td>${result['Departure Voyage ID'] || '-'}</td>
                             <td>${result['Arrival Vessel Name'] || '-'}</td>
                             <td>${result['Arrival Voyage ID'] || '-'}</td>
+                            <td>${result['Arrival Entries'] || '-'}</td>
+                            <td>${result['Departure Entries'] || '-'}</td>
+
+
                         </tr>
                     `).join('')}
                 </tbody>
