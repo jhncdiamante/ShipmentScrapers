@@ -68,11 +68,17 @@ class TrackingWebsite(IWebsite):
             "bill_of_lading_number": shipment_id,
             "containers": [self._process_container(c, shipment_id) for c in containers]
         }
+        import json
+        with open(f"{shipment_id}.json", "w", encoding="utf-8") as f:
+            json.dump(shipment_data, f, ensure_ascii=False, indent=4)
+
 
         containers_data = []
 
         for container in shipment_data.get("containers"):
             milestones = container.get("milestones")
+            destination = container.get("destination").lower()
+            origin = container.get("origin").lower()
 
             dynamic_milestones = {"Departure": [],
                                   "Arrival": []}
@@ -91,6 +97,7 @@ class TrackingWebsite(IWebsite):
                 "Gate out": None,
             }
             for milestone in milestones:
+                m_loc = milestone.get("location").lower()
                 m_event = milestone.get("event")
 
                 if m_event not in STANDARD_EVENTS:
@@ -101,22 +108,27 @@ class TrackingWebsite(IWebsite):
                 m_voyage_name = milestone.get("voyage_name")
 
                 if m_event in {"Departure", "Arrival"}:
-                    dynamic_milestones[m_event].append(f"{m_date}, {milestone.get("location")}")
+                    dynamic_milestones[m_event].append(f"{milestone.get("location")}")
 
                 if (
                     milestones_data[m_event] is not None
                     and m_event not in {"Gate in", "Departure"}
                 ) or (milestones_data[m_event] is None):
                     
-                    milestones_data[m_event] = m_date
                     if m_event in {"Departure", "Arrival"}:
-                        milestones_data[f"{m_event} Vessel Name"] = m_voyage_name 
-                        milestones_data[f"{m_event} Voyage ID"] = m_voyage_id
-                        milestones_data[f"{m_event} Location"] = milestone.get("location")
+                        if (m_loc in origin and m_event == "Departure") or (m_loc in destination and m_event == "Arrival"):
+                            milestones_data[f"{m_event} Vessel Name"] = m_voyage_name 
+                            milestones_data[f"{m_event} Voyage ID"] = m_voyage_id
+                            milestones_data[f"{m_event} Location"] = milestone.get("location")
+                        else:
+                            continue
+                    milestones_data[m_event] = m_date
 
-
-                estimated_time_arrival = milestones_data.get("Arrival")
-
+                arrivals = [m.get("date") for m in milestones if m.get("event") == "Arrival"]
+                estimated_time_arrival = (
+                    milestones_data.get("Arrival")
+                    or (arrivals[-1] if arrivals else "")
+                )
                 current_time = self._scrape_time.get_current_time()
 
                 

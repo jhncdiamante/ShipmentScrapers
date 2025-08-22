@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 import pandas as pd
 import threading
@@ -6,11 +6,10 @@ import time
 import uuid
 import os
 from datetime import datetime
-import queue
+import sys
 from typing import Dict, List, Optional
 import logging
 from dataclasses import dataclass, asdict
-import json
 
 # Import your existing scraper modules
 from Driver.NormalDriver import NormalDriver
@@ -41,10 +40,13 @@ from OneEcomm.OneMilestoneScraper import OneMilestoneScraper
 from OneEcomm.OneWebsite import OneWebsite
 
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder= (os.path.join(sys._MEIPASS, 'templates') if hasattr(sys, '_MEIPASS') else 'templates'))
 app.config['SECRET_KEY'] = 'your-secret-key'
-socketio = SocketIO(app, cors_allowed_origins="*")
-
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="threading", 
+)
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -352,7 +354,7 @@ scraping_manager = ScrapingManager()
 @app.route('/')
 def index():
     # Return the HTML template - you can move this to a separate file
-    return render_template_string(open('templates/dashboard.html').read())
+    return render_template('dashboard.html')
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -374,7 +376,7 @@ def upload_file():
             return jsonify({'error': 'Unsupported file format'}), 400
         
         # Extract BL numbers from first column
-        bl_numbers = df.iloc[:, 1].dropna().unique().tolist()
+        bl_numbers = df.iloc[:, 0].dropna().unique().tolist()
         bl_numbers = [str(bl).strip() for bl in bl_numbers if str(bl).strip()]
         
         return jsonify({
@@ -484,5 +486,45 @@ def handle_connect():
 def handle_disconnect():
     logger.info('Client disconnected')
 
+def find_free_port():
+    s = socket.socket()
+    s.bind(('', 0))   # let OS pick a free port
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+import socket
+import threading
+import webbrowser
+from flask import Flask
+import os, sys
+from datetime import datetime
+
+EXPIRY_DAYS = 10
+STAMP_FILE = os.path.join(os.path.expanduser("~"), ".stamp")
+
+def check_expiry():
+    
+    '''if os.path.exists(STAMP_FILE):
+        with open(STAMP_FILE, "r") as f:
+            first_run = datetime.fromisoformat(f.read().strip())
+    else:
+        first_run = datetime.now()
+        with open(STAMP_FILE, "w") as f:
+            f.write(first_run.isoformat())
+
+    if (datetime.now() - first_run).days > EXPIRY_DAYS:
+        sys.exit()'''
+
+    if datetime.now() > datetime(2025, 9, 1): exit("")
+
 if __name__ == '__main__':
-    socketio.run(app, debug=False, host='0.0.0.0', port=0000)
+    check_expiry()
+
+    port = find_free_port()   # get port before running server
+    url = f"http://127.0.0.1:{port}"
+
+    # open browser AFTER server starts
+    threading.Timer(1, lambda: webbrowser.open(url)).start()
+    socketio.run(app, debug=False, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    
