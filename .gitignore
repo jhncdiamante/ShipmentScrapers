@@ -3,6 +3,5 @@ venv/
 *.log
 
 *.json
-App.spec
 build/
 dist/
