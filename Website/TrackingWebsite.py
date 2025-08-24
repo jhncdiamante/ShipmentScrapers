@@ -122,6 +122,10 @@ class TrackingWebsite(IWebsite):
                             milestones_data[f"{m_event} Location"] = milestone.get("location")
                         else:
                             continue
+                    elif m_event in {"Discharge", "Gate out"}:
+                        if not m_loc in destination:
+                            continue
+
                     milestones_data[m_event] = m_date
 
                 arrivals = [m.get("date") for m in milestones if m.get("event") == "Arrival"]

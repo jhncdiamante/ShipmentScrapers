@@ -1,4 +1,4 @@
-fake-useragent==1.5.1
+fake_useragent-2.2.0
 Flask==3.1.1
 Flask-SocketIO==5.5.1
 Jinja2==3.1.6
