@@ -57,5 +57,8 @@ class OneMilestoneScraper(IMilestoneScraper):
         return event
 
     def get_location(self) -> str:
-        return self._milestone_element.find_element(By.XPATH, LOCATION_CELL_XPATH).text.strip()
+        full_loc = self._milestone_element.find_element(By.XPATH, LOCATION_CELL_XPATH).get_attribute("innerHTML")
+        return full_loc.split("<br>")[0].strip() if full_loc else ""
+    
+    
         
